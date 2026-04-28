@@ -41,3 +41,10 @@ def test_larger_models_have_more_parameters_than_tiny_unet():
     assert count_parameters(nafnet) > tiny_params
     assert count_parameters(restormer) > tiny_params
     assert count_parameters(retinex) > tiny_params
+
+
+def test_retinex_physics_uses_shadow_guided_refinement():
+    model = build_model("retinex_physics", in_channels=7, out_channels=4, base_channels=8)
+    refine_in_channels = model.refine[0].in_channels
+
+    assert refine_in_channels == model.width + 14

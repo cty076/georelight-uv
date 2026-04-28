@@ -164,12 +164,13 @@ class RetinexBlock(nn.Module):
 
 
 class RetinexPhysicsNet(nn.Module):
-    """Physics-inspired decomposition network.
+    """Physics-inspired shadow-guided de-lighting network.
 
-    The network predicts illumination, shadow, and specular residuals, then uses
-    a simple image-formation equation to estimate albedo before a small learned
-    refinement head. It still returns the common `[albedo RGB, shadow]` tensor so
-    it can share the same training and evaluation scripts.
+    The network keeps the interpretable shadow branch, but albedo is recovered by
+    a learned refinement head conditioned on the predicted shadow, illumination,
+    specular residual, and two coarse physically motivated albedo estimates.
+    It still returns the common `[albedo RGB, shadow]` tensor so it can share the
+    same training and evaluation scripts.
     """
 
     def __init__(self, in_channels: int = 7, out_channels: int = 4, base_channels: int = 32) -> None:
@@ -177,6 +178,7 @@ class RetinexPhysicsNet(nn.Module):
         if out_channels != 4:
             raise ValueError("RetinexPhysicsNet expects out_channels=4")
         width = base_channels * 4
+        self.width = width
         self.stem = nn.Sequential(
             nn.Conv2d(in_channels, width, kernel_size=3, padding=1),
             nn.GroupNorm(8, width),
@@ -187,7 +189,7 @@ class RetinexPhysicsNet(nn.Module):
         self.shadow = nn.Conv2d(width, 1, kernel_size=3, padding=1)
         self.specular = nn.Conv2d(width, 3, kernel_size=3, padding=1)
         self.refine = nn.Sequential(
-            nn.Conv2d(width + 3, width, kernel_size=3, padding=1),
+            nn.Conv2d(width + 14, width, kernel_size=3, padding=1),
             nn.SiLU(inplace=True),
             nn.Conv2d(width, 3, kernel_size=3, padding=1),
         )
@@ -199,8 +201,26 @@ class RetinexPhysicsNet(nn.Module):
         shadow = torch.sigmoid(self.shadow(features))
         specular = 0.35 * torch.sigmoid(self.specular(features))
 
-        denominator = (illumination * (1.0 - 0.85 * shadow)).clamp_min(0.08)
+        shadow_multiplier = (1.0 - 0.85 * shadow).clamp_min(0.12)
+        shadow_corrected = (shaded / shadow_multiplier).clamp(0.0, 1.0)
+        denominator = (illumination * shadow_multiplier).clamp_min(0.08)
         albedo_physics = ((shaded - specular) / denominator).clamp(0.0, 1.0)
-        albedo_delta = torch.tanh(self.refine(torch.cat([features, albedo_physics], dim=1))) * 0.25
-        albedo = (albedo_physics + albedo_delta).clamp(0.0, 1.0)
+        albedo_delta = torch.tanh(
+            self.refine(
+                torch.cat(
+                    [
+                        features,
+                        shaded,
+                        shadow_corrected,
+                        albedo_physics,
+                        illumination,
+                        shadow,
+                        specular,
+                    ],
+                    dim=1,
+                )
+            )
+        ) * 0.35
+        albedo_base = 0.5 * shadow_corrected + 0.5 * albedo_physics
+        albedo = (albedo_base + albedo_delta).clamp(0.0, 1.0)
         return torch.cat([albedo, shadow], dim=1)

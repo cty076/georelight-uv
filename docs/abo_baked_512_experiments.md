@@ -48,3 +48,7 @@ On validation, `restormer_lite` is the strongest learned model, followed by `ret
 On test, the hand-crafted `retinex` baseline is still strongest. This is a useful negative result: on the current 20-model pilot dataset, learned networks are already fitting the validation models but do not generalize as well to unseen model categories.
 
 The next experiment should expand the 512 dataset before increasing model size or training epochs. With the current data generator, moving from 20 to 200 ABO models should be much more valuable than pushing 4K or training a larger network on the same 20 models.
+
+## Architecture Note
+
+The original `retinex_physics` result in this table used a mostly formula-driven albedo recovery step. The current code has been updated to keep the shadow branch but recover albedo through a shadow-guided refinement head. Any new comparison should retrain `retinex_physics` before comparing against the numbers above.
