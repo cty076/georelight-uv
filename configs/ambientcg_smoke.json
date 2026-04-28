@@ -1,0 +1,11 @@
+{
+  "resolution": 256,
+  "num_assets": 3,
+  "lights_per_material": 4,
+  "seed": 20260427,
+  "train_fraction": 0.67,
+  "val_fraction": 0.33,
+  "download_attributes": "1K-JPG",
+  "sort": "popular",
+  "max_zip_size_mb": 32.0
+}

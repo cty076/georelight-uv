@@ -1,0 +1,8 @@
+{
+  "resolution": 64,
+  "num_materials": 8,
+  "lights_per_material": 3,
+  "seed": 20260425,
+  "train_fraction": 0.75,
+  "val_fraction": 0.125
+}

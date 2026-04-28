@@ -1,0 +1,14 @@
+[project]
+name = "georelight-uv"
+version = "0.1.0"
+description = "Lightweight 3D texture de-lighting research scaffold"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pillow",
+  "torch",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
